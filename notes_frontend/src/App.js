@@ -1,49 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useEffect, useState } from "react";
+import { AuthProvider, useAuth } from "./AuthContext";
+import Notes from "./pages/Notes";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import "./theme.css";
 
-// PUBLIC_INTERFACE
-function App() {
-  const [theme, setTheme] = useState('light');
-
-  // Effect to apply theme to document element
+// Simple hash-based router to avoid adding react-router dependency
+function useHashRoute() {
+  const [route, setRoute] = useState(window.location.hash || "#/notes");
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
-
-  // PUBLIC_INTERFACE
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-  };
-
-  return (
-    <div className="App">
-      <header className="App-header">
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-        </button>
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <p>
-          Current theme: <strong>{theme}</strong>
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+    const onHashChange = () => setRoute(window.location.hash || "#/notes");
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+  return [route, setRoute];
 }
 
-export default App;
+function RouterView() {
+  const [route] = useHashRoute();
+  const { user, initializing } = useAuth();
+
+  if (initializing) {
+    return <div style={{ display: "grid", placeItems: "center", height: "100vh" }}>Loading...</div>;
+  }
+
+  // Auth pages
+  if (route.startsWith("#/login")) return <Login />;
+  if (route.startsWith("#/register")) return <Register />;
+
+  // Guarded routes
+  if (!user) {
+    window.location.hash = "#/login";
+    return null;
+  }
+  return <Notes />;
+}
+
+// PUBLIC_INTERFACE
+export default function App() {
+  /** App entry point with auth provider and simple routing. */
+  return (
+    <AuthProvider>
+      <RouterView />
+    </AuthProvider>
+  );
+}
